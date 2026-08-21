@@ -1,0 +1,13 @@
+{
+  "name": "weichuan-yuqing-workbench",
+  "version": "1.0.0",
+  "description": "味千拉面线上舆情工作台后端：定时爬虫 + 登录鉴权 + 管理员审批 + 托管前端（零依赖 Node）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}
