@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<!-- 味千拉面舆情工作台 · 后端鉴权版（数据来自后端 API） -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>味千拉面 · 线上舆情工作台</title>
+<style>
+  :root{
+    --brand:#E60012; --brand-soft:#FCE9EB;
+    --pos:#2BA471; --neu:#8C8C8C; --neg:#E34D59;
+    --xhs:#FF2442; --dy:#FE2C55; --dp:#FF6633;
+    --bg:#F5F6F8; --card:#FFFFFF; --ink:#1F2329; --ink-2:#5B6168; --line:#E8EAED;
+    --shadow:0 2px 12px rgba(31,35,41,.06); --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  .wrap{display:flex;min-height:100vh;}
+
+  .sidebar{width:230px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);
+    padding:20px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 18px;}
+  .brand .logo{width:38px;height:38px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .brand .logo svg{width:22px;height:22px;}
+  .brand h1{font-size:16px;margin:0;font-weight:700;line-height:1.2;}
+  .brand p{font-size:11px;color:var(--ink-2);margin:2px 0 0;}
+  .nav{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+  .nav button{display:flex;align-items:center;gap:10px;padding:12px; border-radius:10px;color:var(--ink-2);
+    font-size:14px;font-weight:600;text-align:left;width:100%;min-height:44px;transition:.15s;}
+  .nav button svg{width:20px;height:20px;flex-shrink:0;}
+  .nav button:hover{background:var(--bg);}
+  .nav button.active{background:var(--brand-soft);color:var(--brand);}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .topbar h2{font-size:17px;margin:0;font-weight:700;}
+  .topbar .spacer{flex:1;}
+  .userbox{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);}
+  .userbox .role{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--brand-soft);color:var(--brand);}
+  .sync{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);background:var(--bg);padding:6px 10px;border-radius:20px;min-height:32px;}
+  .sync .dot{width:8px;height:8px;border-radius:50%;background:var(--neu);}
+  .sync.live .dot{background:var(--pos);}
+  .tbtn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink);
+    background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:10px;min-height:40px;}
+  .tbtn:hover{border-color:var(--brand);color:var(--brand);}
+  .tbtn svg{width:16px;height:16px;}
+  .tbtn.danger{color:var(--neg);border-color:#F3C2C7;}
+  .tbtn.danger:hover{background:var(--brand-soft);border-color:var(--neg);}
+
+  .content{padding:22px;max-width:1180px;width:100%;margin:0 auto;}
+  .panel{display:none;}
+  .panel.show{display:block;animation:fade .2s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  .today{background:#fff;border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:20px;box-shadow:var(--shadow);}
+  .today h3{margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:8px;}
+  .today .sub{font-size:12px;color:var(--ink-2);margin:0 0 12px;}
+  .today-list{display:flex;flex-direction:column;gap:8px;}
+  .titem{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);}
+  .titem.overdue{border-color:#F3C2C7;background:#FFF5F6;}
+  .titem .tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0;}
+  .tag.overdue{background:var(--neg);color:#fff;} .tag.due{background:#FFF1E0;color:#D97706;}
+  .titem .txt{flex:1;min-width:0;}
+  .titem .txt b{font-size:14px;} .titem .txt span{display:block;font-size:12px;color:var(--ink-2);}
+  .titem .do{background:var(--brand);color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:9px;min-height:40px;flex-shrink:0;}
+
+  .grid{display:grid;gap:16px;}
+  .cols-4{grid-template-columns:repeat(4,1fr);}
+  .cols-2{grid-template-columns:repeat(2,1fr);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+  .card h4{margin:0 0 14px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .card h4 .ic{width:22px;height:22px;color:var(--brand);}
+  .metric{display:flex;flex-direction:column;gap:4px;}
+  .metric .v{font-size:28px;font-weight:800;letter-spacing:-.5px;}
+  .metric .l{font-size:12px;color:var(--ink-2);}
+  .metric .d{font-size:12px;font-weight:700;}
+  .d.up{color:var(--pos);} .d.down{color:var(--neg);}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--ink-2);}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+
+  .list{display:flex;flex-direction:column;gap:10px;}
+  .row{display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid var(--line);border-radius:11px;background:#fff;}
+  .row .pf{font-size:11px;font-weight:700;color:#fff;padding:3px 9px;border-radius:6px;flex-shrink:0;margin-top:2px;}
+  .pf.xiaohongshu{background:var(--xhs);} .pf.douyin{background:var(--dy);} .pf.dianping{background:var(--dp);} .pf.weibo{background:#FF8200;}
+  .row .body{flex:1;min-width:0;}
+  .row .body b{font-size:14px;display:block;}
+  .row .body p{margin:3px 0 0;font-size:12px;color:var(--ink-2);}
+  .row .meta{font-size:11px;color:var(--ink-2);margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;}
+  .chip.neg{background:#FDECEE;color:var(--neg);} .chip.pos{background:#E8F6EF;color:var(--pos);} .chip.neu{background:#F0F1F2;color:var(--neu);}
+  .chip.sev-high{background:#FDECEE;color:var(--neg);} .chip.sev-mid{background:#FFF1E0;color:#D97706;} .chip.sev-low{background:#EAF2FB;color:#2563EB;}
+  .row .act{display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+  .row .act button{font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;min-height:38px;}
+  .act .ok{background:var(--pos);color:#fff;} .act .fl{background:var(--bg);color:var(--ink-2);border:1px solid var(--line);}
+  .row.done{opacity:.6;} .row .done-tag{font-size:11px;color:var(--pos);font-weight:700;background:#E8F6EF;padding:5px 10px;border-radius:8px;}
+
+  .bar-wrap{display:flex;flex-direction:column;gap:12px;margin-top:6px;}
+  .bar{display:flex;align-items:center;gap:10px;}
+  .bar .nm{width:78px;font-size:12px;font-weight:600;flex-shrink:0;}
+  .bar .nm .stores{display:block;font-size:10px;font-weight:400;color:#8A9099;margin-top:2px;}
+  .bar .track{flex:1;height:14px;background:var(--bg);border-radius:7px;overflow:hidden;}
+  .bar .fill{height:100%;border-radius:7px;background:var(--brand);}
+  .bar .val{width:54px;text-align:right;font-size:12px;font-weight:700;}
+
+  .note{background:#FFFBEA;border:1px solid #F4E3A1;border-radius:10px;padding:10px 14px;font-size:12px;color:#8a6d1d;margin-bottom:16px;display:flex;gap:8px;align-items:flex-start;}
+  .note svg{width:16px;height:16px;flex-shrink:0;margin-top:1px;}
+
+  .section-title{font-size:13px;font-weight:700;color:var(--ink-2);margin:22px 0 12px;display:flex;align-items:center;gap:8px;}
+  .section-title::before{content:"";width:4px;height:14px;background:var(--brand);border-radius:2px;}
+
+  .mobile-tab{display:none;}
+  .empty-state{padding:40px 20px;text-align:center;color:var(--ink-2);}
+  .hidden{display:none!important;}
+
+  /* 登录 / 注册 */
+  .login-mask{position:fixed;inset:0;background:linear-gradient(135deg,#E60012,#9e000c);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .login-card{background:#fff;border-radius:16px;padding:30px 24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .login-card h1{font-size:20px;margin:0 0 4px;color:var(--brand);}
+  .login-card p{font-size:13px;color:var(--ink-2);margin:0 0 18px;}
+  .login-card input{width:100%;padding:12px 14px;font-size:16px;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;}
+  .login-card .btn{width:100%;padding:13px;border-radius:10px;font-size:15px;font-weight:700;background:var(--brand);color:#fff;}
+  .login-card .alt{margin-top:14px;font-size:13px;text-align:center;color:var(--ink-2);}
+  .login-card .alt a{color:var(--brand);font-weight:700;cursor:pointer;}
+  .login-msg{font-size:13px;margin-bottom:10px;min-height:18px;}
+  .login-msg.err{color:var(--neg);} .login-msg.ok{color:var(--pos);}
+
+  /* 审批弹窗 */
+  .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:90;padding:20px;}
+  .modal-mask.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:440px;max-height:82vh;overflow:auto;}
+  .modal h3{margin:0 0 14px;font-size:16px;}
+  .pend{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;}
+  .pend .u{flex:1;font-size:14px;font-weight:600;} .pend .t{font-size:11px;color:var(--ink-2);}
+  .pend button{background:var(--pos);color:#fff;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;min-height:38px;}
+  .rbtn{font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;min-height:34px;border:1px solid var(--line);background:#fff;color:var(--ink-2);margin-left:6px;}
+  .rbtn.on{background:var(--brand);color:#fff;border-color:var(--brand);}
+  .srclink{font-size:11px;font-weight:700;color:var(--brand);text-decoration:none;border:1px solid var(--line);padding:2px 8px;border-radius:6px;margin-left:6px;}
+  .srclink:hover{background:var(--brand-soft);}
+  .modal .close{float:right;font-size:13px;color:var(--ink-2);}
+
+  @media (max-width:880px){ .cols-4{grid-template-columns:repeat(2,1fr);} .cols-2{grid-template-columns:1fr;} }
+  @media (max-width:768px){
+    .sidebar{display:none;} .content{padding:14px;padding-bottom:calc(78px + env(safe-area-inset-bottom));}
+    .topbar{padding:10px 14px;gap:8px;} .topbar h2{font-size:15px;}
+    .tbtn span{display:none;} .tbtn{padding:8px;}
+    .userbox .uname{display:none;}
+    .mobile-tab{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:30;background:#fff;border-top:1px solid var(--line);
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom));justify-content:space-around;}
+    .mobile-tab button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--ink-2);min-height:50px;justify-content:center;}
+    .mobile-tab button svg{width:22px;height:22px;} .mobile-tab button.active{color:var(--brand);}
+    .metric .v{font-size:23px;} .titem{flex-wrap:wrap;} .titem .do{width:100%;}
+    .row{flex-wrap:wrap;} .row .act{flex-direction:row;width:100%;} .row .act button{flex:1;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app" style="display:none">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M5 3v18M5 12h14M19 3v18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></div>
+      <div><h1>味千舆情台</h1><p>线上舆情监测工作台</p></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-view="overview" class="active"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="3" width="8" height="5" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="11" width="8" height="10" rx="2" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="8" height="7" rx="2" stroke="currentColor" stroke-width="2"/></svg>舆情总览看板</button>
+      <button data-view="alerts"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>负面预警/待处理</button>
+      <button data-view="hot"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16M8 16l3-7 3 4 3-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>热点爆文榜单</button>
+      <button data-view="rival"><svg viewBox="0 0 24 24" fill="none"><path d="M5 21V9m7 12V3m7 18v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>竞品对比</button>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="viewTitle">舆情总览看板</h2>
+      <div class="spacer"></div>
+      <div class="sync" id="syncPill"><span class="dot"></span><span id="syncText">加载中…</span></div>
+      <div class="userbox">
+        <span class="uname" id="uname"></span><span class="role" id="urole"></span>
+      </div>
+      <button class="tbtn" id="btnApprove" style="display:none"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4M12 3l8 4v5c0 5-4 8-8 9-4-1-8-4-8-9V7l8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>审批</span></button>
+      <button class="tbtn" id="btnExport"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>导出</span></button>
+      <button class="tbtn" id="btnImport" style="display:none"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21V9m0 0l-4 4m4-4l4 4M5 3h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>导入</span></button>
+      <button class="tbtn danger" id="btnLogout"><svg viewBox="0 0 24 24" fill="none"><path d="M15 4h3v16h-3M10 8l-4 4 4 4M6 12h11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>退出</span></button>
+      <input type="file" id="fileInput" accept=".json,application/json" class="hidden">
+    </div>
+
+    <div class="content">
+      <div class="today" id="todayBox">
+        <h3><svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px"><circle cx="12" cy="12" r="9" stroke="#E60012" stroke-width="2"/><path d="M12 7v5l3 2" stroke="#E60012" stroke-width="2" stroke-linecap="round"/></svg>今天要处理</h3>
+        <p class="sub">逾期未处理的负面预警会自动滚到此处并标红，请尽快跟进。</p>
+        <div class="today-list" id="todayList"></div>
+      </div>
+
+      <section class="panel show" id="panel-overview">
+        <div class="note"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#caa400" stroke-width="2"/><path d="M12 8v5M12 16h.01" stroke="#caa400" stroke-width="2" stroke-linecap="round"/></svg><span>数据由后端每 15 分钟刷新：微博为真实抓取，小红书/抖音/大众点评当前为演示数据（建议后续接入合规舆情服务）。</span></div>
+        <div class="grid cols-4" id="metrics"></div>
+        <div class="section-title">声量趋势（近 30 天）</div>
+        <div class="grid cols-2">
+          <div class="card"><h4><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 15l4-5 3 3 5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>全网声量走势</h4><div id="trendChart"></div><div class="legend"><span><i style="background:var(--brand)"></i>总声量</span><span><i style="background:var(--neg)"></i>负面声量</span></div></div>
+          <div class="card"><h4><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 109 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 3v9l6 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>情感占比</h4><div id="sentimentChart"></div><div class="legend" id="sentimentLegend"></div></div>
+        </div>
+        <div class="section-title">各平台声量分布</div>
+        <div class="card"><div class="bar-wrap" id="platformBars"></div></div>
+      </section>
+
+      <section class="panel" id="panel-alerts">
+        <div class="card"><h4><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>负面预警与危机处理</h4><div class="list" id="alertList"></div></div>
+      </section>
+
+      <section class="panel" id="panel-hot">
+        <div class="card"><h4><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16M8 16l3-7 3 4 3-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>各平台热点 / 爆文榜单</h4><div class="list" id="hotList"></div></div>
+      </section>
+
+      <section class="panel" id="panel-rival">
+        <div class="grid cols-2">
+          <div class="card"><h4><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M5 21V9m7 12V3m7 18v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>声量对比（近 30 天）</h4><div class="bar-wrap" id="rivalBars"></div></div>
+          <div class="card"><h4><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 109 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 3v9l6 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>情感健康度对比</h4><div id="rivalChart"></div><div class="legend" id="rivalLegend"></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-tab" id="mobileTab">
+  <button data-view="overview" class="active"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="3" width="8" height="5" rx="2" stroke="currentColor" stroke-width="2"/><rect x="13" y="11" width="8" height="10" rx="2" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="8" height="7" rx="2" stroke="currentColor" stroke-width="2"/></svg>总览</button>
+  <button data-view="alerts"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 16H3L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>预警</button>
+  <button data-view="hot"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16M8 16l3-7 3 4 3-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>热点</button>
+  <button data-view="rival"><svg viewBox="0 0 24 24" fill="none"><path d="M5 21V9m7 12V3m7 18v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>竞品</button>
+</nav>
+
+<!-- 登录 / 注册 -->
+<div class="login-mask" id="loginMask">
+  <div class="login-card">
+    <h1>味千舆情台</h1>
+    <p id="loginSub">登录以查看线上舆情（需管理员审批通过）</p>
+    <div class="login-msg" id="loginMsg"></div>
+    <input id="liUser" type="text" placeholder="用户名" autocomplete="username">
+    <input id="liPass" type="password" placeholder="密码" autocomplete="current-password">
+    <button class="btn" id="liBtn" onclick="onLogin()">登录</button>
+    <div class="alt">还没有账号？<a id="toggleReg">注册申请</a></div>
+  </div>
+</div>
+
+<!-- 审批弹窗 -->
+<div class="modal-mask" id="approveModal">
+  <div class="modal">
+    <span class="close" onclick="closeModal()">关闭</span>
+    <h3>用户管理（主管理员）</h3>
+    <div id="pendList"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ 鉴权数据层 ============ */
+var TOKEN = localStorage.getItem('wy_token') || '';
+var CURRENT = null;   // 当前用户
+var state = null;     // 舆情数据
+var IS_VIEWER = false; // 是否只读角色
+var TODAY = new Date().toISOString().slice(0,10);
+
+function api(path, opts){
+  opts = opts || {};
+  opts.headers = opts.headers || {};
+  if(TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  return fetch(path, opts).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); });
+}
+
+function showLogin(){ document.getElementById('loginMask').style.display='flex'; document.getElementById('app').style.display='none'; }
+function showApp(){ document.getElementById('loginMask').style.display='none'; document.getElementById('app').style.display='flex'; }
+function setMsg(t, cls){ var m=document.getElementById('loginMsg'); m.textContent=t; m.className='login-msg'+(cls?(' '+cls):''); }
+
+function onLogin(){
+  var u=document.getElementById('liUser').value.trim();
+  var p=document.getElementById('liPass').value;
+  if(!u||!p){ setMsg('请输入用户名和密码','err'); return; }
+  api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+    .then(function(res){
+      if(res.ok){ TOKEN=res.body.token; localStorage.setItem('wy_token',TOKEN); CURRENT=res.body.user; boot(); }
+      else { setMsg(res.body.error||'登录失败','err'); }
+    });
+}
+function onRegister(){
+  var u=document.getElementById('liUser').value.trim();
+  var p=document.getElementById('liPass').value;
+  if(!u||!p){ setMsg('请输入用户名和密码','err'); return; }
+  api('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+    .then(function(res){ if(res.ok) setMsg('注册成功，请等待管理员审批后再登录','ok'); else setMsg(res.body.error,'err'); });
+}
+document.getElementById('toggleReg').onclick=function(){
+  var btn=document.getElementById('liBtn');
+  if(btn.getAttribute('data-mode')==='reg'){ btn.textContent='登录'; btn.onclick=onLogin; document.getElementById('loginSub').textContent='登录以查看线上舆情（需管理员审批通过）'; btn.removeAttribute('data-mode'); }
+  else { btn.textContent='提交注册'; btn.onclick=onRegister; document.getElementById('loginSub').textContent='申请账号（提交后由主管理员审批）'; btn.setAttribute('data-mode','reg'); }
+};
+
+function logout(){
+  TOKEN=''; localStorage.removeItem('wy_token'); CURRENT=null;
+  document.getElementById('liUser').value=''; document.getElementById('liPass').value='';
+  showLogin();
+}
+
+/* ============ 启动 ============ */
+function boot(){
+  Promise.all([api('/api/me'), api('/api/data')]).then(function(arr){
+    var me=arr[0], data=arr[1];
+    if(!me.ok || !data.ok){ showLogin(); return; }
+    CURRENT=me.body.user; state=data.body;
+    document.getElementById('uname').textContent=CURRENT.username;
+    var roleName={admin:'管理员',editor:'编辑',viewer:'只读'}[CURRENT.role]||CURRENT.role;
+    document.getElementById('urole').textContent=roleName;
+    IS_VIEWER = CURRENT.role==='viewer';
+    document.getElementById('btnApprove').style.display = CURRENT.role==='admin'?'flex':'none';
+    document.getElementById('btnImport').style.display = CURRENT.role==='admin'?'flex':'none';
+    showApp(); renderAll();
+  }).catch(function(){ showLogin(); });
+}
+
+/* ============ 渲染（与数据来源无关，纯渲染 state） ============ */
+var PLATFORM={xiaohongshu:{name:"小红书",color:"#FF2442"},douyin:{name:"抖音",color:"#FE2C55"},dianping:{name:"大众点评",color:"#FF6633"},weibo:{name:"微博",color:"#FF8200"}};
+var SENT={positive:"正面",neutral:"中性",negative:"负面"};
+var SENT_COLOR={positive:"#2BA471",neutral:"#8C8C8C",negative:"#E34D59"};
+var SEV={high:"高",mid:"中",low:"低"};
+function $(id){return document.getElementById(id);}
+function cmpDate(a,b){return a<b?-1:(a>b?1:0);}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
+function fmt(n){return (n>=10000)?(n/10000).toFixed(1)+"万":(n||0).toLocaleString("en-US");}
+
+function renderToday(){
+  var list=$("todayList"); list.innerHTML="";
+  if(!state||!state.alerts){ return; }
+  var items=state.alerts.filter(function(a){return a.status!=="done" && cmpDate(a.dueDate,TODAY)<=0;})
+    .sort(function(x,y){return cmpDate(x.dueDate,y.dueDate);});
+  if(items.length===0){ list.innerHTML='<div class="titem empty" style="justify-content:center;color:var(--ink-2);background:transparent;border-style:dashed">暂无待处理的负面预警，当前舆情平稳。</div>'; return; }
+  items.forEach(function(a){
+    var overdue=cmpDate(a.dueDate,TODAY)<0;
+    var el=document.createElement("div"); el.className="titem"+(overdue?" overdue":"");
+    el.innerHTML='<span class="tag '+(overdue?"overdue":"due")+'">'+(overdue?"逾期":"今日")+'</span>'+
+      '<div class="txt"><b>'+esc(a.summary)+'</b><span>'+PLATFORM[a.platform].name+' · 截止 '+a.dueDate+' · 严重度'+SEV[a.severity]+(a.url?' · <a class="srclink" href="'+esc(a.url)+'" target="_blank" rel="noopener">原帖↗</a>':'')+'</span></div>'+
+      (IS_VIEWER?'':'<button class="do" data-act="done" data-id="'+encodeURIComponent(a.id)+'">一键处理</button>');
+    list.appendChild(el);
+  });
+  list.querySelectorAll('[data-act="done"]').forEach(function(b){ b.onclick=function(){ markDone(decodeURIComponent(b.getAttribute("data-id"))); }; });
+}
+function markDone(id){
+  api('/api/alert/'+encodeURIComponent(id)+'/done',{method:'POST'}).then(function(res){ if(res.ok){ state=res.body; renderAll(); } });
+}
+
+function renderMetrics(){
+  var box=$("metrics"); box.innerHTML="";
+  if(!state||!state.trend){ return; }
+  var total=state.trend.reduce(function(s,t){return s+t.volume;},0);
+  var negTotal=state.trend.reduce(function(s,t){return s+t.neg;},0);
+  var negRate=state.sentiment?state.sentiment.negative:0;
+  var openAlerts=state.alerts?state.alerts.filter(function(a){return a.status!=="done";}).length:0;
+  var highRisk=state.alerts?state.alerts.filter(function(a){return a.status!=="done"&&a.severity==="high";}).length:0;
+  var last7=state.trend.slice(-7).reduce(function(s,t){return s+t.volume;},0);
+  var prev7=state.trend.slice(-14,-7).reduce(function(s,t){return s+t.volume;},0);
+  var mom=prev7?Math.round((last7-prev7)/prev7*100):0;
+  var cards=[
+    {v:fmt(total),l:"近30天总声量",d:(mom>=0?"▲ +":"▼ ")+mom+"% 环比",up:mom>=0},
+    {v:(negRate||0)+"%",l:"负面情感占比",d:"负面声量 "+fmt(negTotal),up:false},
+    {v:openAlerts,l:"待处理预警",d:highRisk+" 条高危待跟进",up:false},
+    {v:fmt(state.competitors?state.competitors[0].volume:0),l:"本品声量(味千)",d:state.competitors?("竞品榜首 "+state.competitors[1].name):"",up:true}
+  ];
+  cards.forEach(function(c){ var el=document.createElement("div"); el.className="card metric";
+    el.innerHTML='<div class="v">'+c.v+'</div><div class="l">'+c.l+'</div><div class="d '+(c.up?"up":"down")+'">'+c.d+'</div>'; box.appendChild(el); });
+}
+
+function renderTrend(){
+  if(!state||!state.trend) return;
+  var data=state.trend, W=540,H=200,pad=28;
+  var max=Math.max.apply(null,data.map(function(d){return d.volume;}));
+  var min=Math.min.apply(null,data.map(function(d){return d.neg;}));
+  var n=data.length;
+  function X(i){return pad+i*(W-2*pad)/(n-1);}
+  function Y(v){return H-pad-(v-min)/((max-min)||1)*(H-2*pad);}
+  var line="",area="",negLine="";
+  data.forEach(function(d,i){ var x=X(i).toFixed(1),y=Y(d.volume).toFixed(1);
+    line+=(i?" L":"M")+x+" "+y; negLine+=(i?" L":"M")+x+" "+Y(d.neg).toFixed(1);
+    if(i===0) area+="M"+x+" "+(H-pad); area+=" L"+x+" "+y; if(i===n-1) area+=" L"+x+" "+(H-pad)+" Z"; });
+  $("trendChart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block">'+
+    '<defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E60012" stop-opacity=".18"/><stop offset="100%" stop-color="#E60012" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+area+'" fill="url(#g1)"/><path d="'+line+'" fill="none" stroke="#E60012" stroke-width="2.4" stroke-linejoin="round"/>'+
+    '<path d="'+negLine+'" fill="none" stroke="#E34D59" stroke-width="2" stroke-dasharray="4 4" stroke-linejoin="round"/></svg>';
+}
+function polar(cx,cy,r,deg){var a=(deg-90)*Math.PI/180;return [cx+r*Math.cos(a),cy+r*Math.sin(a)];}
+function arc(cx,cy,r,a0,a1){var s=polar(cx,cy,r,a1),e=polar(cx,cy,r,a0);var large=(a1-a0)>180?1:0;
+  return "M "+cx+" "+cy+" L "+s[0].toFixed(1)+" "+s[1].toFixed(1)+" A "+r+" "+r+" 0 "+large+" 0 "+e[0].toFixed(1)+" "+e[1].toFixed(1)+" Z";}
+function renderSentiment(){
+  if(!state||!state.sentiment) return;
+  var s=state.sentiment, parts=[["positive",s.positive],["neutral",s.neutral],["negative",s.negative]];
+  var total=s.positive+s.neutral+s.negative, cx=90,cy=90,r=72,ang=0,segs="";
+  parts.forEach(function(p){ var frac=p[1]/total*360; if(p[1]>0) segs+='<path d="'+arc(cx,cy,r,ang,ang+frac)+'" fill="'+SENT_COLOR[p[0]]+'"/>'; ang+=frac; });
+  $("sentimentChart").innerHTML='<svg viewBox="0 0 180 180" width="180" height="180" style="display:block;margin:0 auto">'+segs+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="44" fill="#fff"/><text x="90" y="86" text-anchor="middle" font-size="13" font-weight="700" fill="#1F2329">'+s.negative+'%</text>'+
+    '<text x="90" y="104" text-anchor="middle" font-size="10" fill="#8C8C8C">负面</text></svg>';
+  $("sentimentLegend").innerHTML=parts.map(function(p){return '<span><i style="background:'+SENT_COLOR[p[0]]+'"></i>'+SENT[p[0]]+' '+p[1]+'%</span>';}).join("");
+}
+function renderPlatformBars(){
+  if(!state||!state.platformDist) return;
+  var box=$("platformBars"); box.innerHTML="";
+  var keys=Object.keys(state.platformDist), max=Math.max.apply(null,keys.map(function(k){return state.platformDist[k];}));
+  keys.forEach(function(k){ var v=state.platformDist[k]; var el=document.createElement("div"); el.className="bar";
+    el.innerHTML='<div class="nm">'+PLATFORM[k].name+'</div><div class="track"><div class="fill" style="width:'+(v/max*100)+'%;background:'+PLATFORM[k].color+'"></div></div><div class="val">'+v+'%</div>'; box.appendChild(el); });
+}
+function renderAlerts(){
+  var box=$("alertList"); box.innerHTML="";
+  if(!state||!state.alerts||state.alerts.length===0){ box.innerHTML='<div class="empty-state">暂无预警数据。</div>'; return; }
+  var order={high:0,mid:1,low:2};
+  state.alerts.slice().sort(function(a,b){ if(a.status!==b.status) return a.status==="done"?1:-1; if(a.severity!==b.severity) return order[a.severity]-order[b.severity]; return cmpDate(a.dueDate,b.dueDate); })
+    .forEach(function(a){
+      var overdue=cmpDate(a.dueDate,TODAY)<0 && a.status!=="done";
+      var el=document.createElement("div"); el.className="row"+(a.status==="done"?" done":"");
+      var pf='<span class="pf '+a.platform+'">'+PLATFORM[a.platform].name+'</span>';
+      var body='<div class="body"><b>'+esc(a.summary)+'</b><p>创建 '+a.createdAt+(overdue?' · <b style="color:#E34D59">已逾期（截止 '+a.dueDate+'）</b>':' · 截止 '+a.dueDate)+'</p>'+
+        '<div class="meta"><span class="chip '+a.sentiment+'">'+SENT[a.sentiment]+'</span><span class="chip sev-'+a.severity+'">严重度 '+SEV[a.severity]+'</span>'+
+        (a.url?'<a class="srclink" href="'+esc(a.url)+'" target="_blank" rel="noopener">查看原帖 ↗</a>':'')+'</div></div>';
+      var act;
+      if(IS_VIEWER){ act='<span class="done-tag" style="background:#F0F1F2;color:#8C8C8C">只读权限</span>'; }
+      else if(a.status==="done"){ act='<span class="done-tag">✓ 已处理</span>'; }
+      else { act='<div class="act"><button class="ok" data-done="'+encodeURIComponent(a.id)+'">标记已处理</button><button class="fl" data-follow="'+encodeURIComponent(a.id)+'">转跟进</button></div>'; }
+      el.innerHTML=pf+body+act; box.appendChild(el);
+    });
+  box.querySelectorAll('[data-done]').forEach(function(b){ b.onclick=function(){ markDone(decodeURIComponent(b.getAttribute("data-done"))); }; });
+  box.querySelectorAll('[data-follow]').forEach(function(b){ b.onclick=function(){ api('/api/alert/'+b.getAttribute("data-follow")+'/follow',{method:'POST'}).then(function(){ /* 静默 */ }); }; });
+}
+function renderHot(){
+  var box=$("hotList"); box.innerHTML="";
+  if(!state||!state.hotlist||state.hotlist.length===0){ box.innerHTML='<div class="empty-state">暂无热点数据。</div>'; return; }
+  state.hotlist.slice().sort(function(a,b){return b.volume-a.volume;}).forEach(function(h){
+    var el=document.createElement("div"); el.className="row";
+    el.innerHTML='<span class="pf '+h.platform+'">'+PLATFORM[h.platform].name+'</span><div class="body"><b>'+esc(h.title)+'</b>'+
+      '<div class="meta"><span class="chip '+h.sentiment+'">'+SENT[h.sentiment]+'</span><span>声量 '+fmt(h.volume)+'</span><span>互动 '+fmt(h.engagement)+'</span><span>'+h.date+'</span>'+
+      (h.url?'<a class="srclink" href="'+esc(h.url)+'" target="_blank" rel="noopener">查看原帖 ↗</a>':'')+'</div></div>';
+    box.appendChild(el);
+  });
+}
+function renderRival(){
+  if(!state||!state.competitors) return;
+  var box=$("rivalBars"); box.innerHTML="";
+  var arr=state.competitors.slice().sort(function(a,b){return b.volume-a.volume;}), max=arr[0].volume;
+  arr.forEach(function(c){ var el=document.createElement("div"); el.className="bar";
+    var store = c.stores ? '<span class="stores">全国门店约'+c.stores+'家</span>' : '';
+    el.innerHTML='<div class="nm">'+c.name+store+'</div><div class="track"><div class="fill" style="width:'+(c.volume/max*100)+'%"></div></div><div class="val">'+fmt(c.volume)+'</div>'; box.appendChild(el); });
+  var W=540,H=44,pad=10,n=state.competitors.length,slot=(W-2*pad)/n,bw=slot*0.6,gap=slot*0.2,bars="";
+  state.competitors.forEach(function(c,i){ var x=pad+gap+i*slot,y=pad,total=c.positive+c.neutral+c.negative;
+    [["positive",c.positive],["neutral",c.neutral],["negative",c.negative]].forEach(function(p){ var h=(p[1]/total)*(H-2*pad); bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+SENT_COLOR[p[0]]+'"/>'; y+=h; });
+    bars+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-1)+'" text-anchor="middle" font-size="9" fill="#5B6168">'+c.name+'</text>'; });
+  $("rivalChart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;margin-top:6px">'+bars+'</svg>';
+  $("rivalLegend").innerHTML=Object.keys(SENT).map(function(k){return '<span><i style="background:'+SENT_COLOR[k]+'"></i>'+SENT[k]+'</span>';}).join("");
+}
+function renderAll(){
+  renderToday(); renderMetrics(); renderTrend(); renderSentiment(); renderPlatformBars(); renderAlerts(); renderHot(); renderRival();
+  var pill=$("syncPill");
+  if(state && state.live){ pill.className="sync live"; $("syncText").textContent="实时爬虫 · 每15分钟刷新"; }
+  else { pill.className="sync"; $("syncText").textContent="示例数据"; }
+}
+
+/* ============ 视图切换 ============ */
+function switchView(v){
+  document.querySelectorAll(".panel").forEach(function(p){ p.classList.remove("show"); });
+  $("panel-"+v).classList.add("show");
+  document.querySelectorAll("[data-view]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-view")===v); });
+  var titles={overview:"舆情总览看板",alerts:"负面预警/待处理",hot:"热点爆文榜单",rival:"竞品对比"};
+  $("viewTitle").textContent=titles[v]; window.scrollTo(0,0);
+}
+document.querySelectorAll("[data-view]").forEach(function(b){ b.onclick=function(){ switchView(b.getAttribute("data-view")); }; });
+
+/* ============ 顶栏按钮 ============ */
+document.getElementById('btnLogout').onclick=logout;
+document.getElementById('btnExport').onclick=function(){
+  api('/api/export').then(function(res){ if(res.ok){ var blob=new Blob([JSON.stringify(res.body,null,2)],{type:"application/json"});
+    var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="味千舆情数据_"+TODAY+".json"; a.click(); } });
+};
+document.getElementById('btnImport').onclick=function(){ $("fileInput").click(); };
+$("fileInput").onchange=function(e){ var f=e.target.files[0]; if(!f) return;
+  var r=new FileReader(); r.onload=function(){ try{ var d=JSON.parse(r.result); if(!d.trend){ alert("文件格式不正确"); return; }
+    api('/api/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(function(res){ if(res.ok){ state=d; renderAll(); alert("导入成功"); } }); }
+    catch(err){ alert("解析失败"); } }; r.readAsText(f); e.target.value=""; };
+document.getElementById('btnApprove').onclick=openApprove;
+
+/* ============ 审批 ============ */
+function openApprove(){
+  api('/api/admin/users').then(function(res){
+    var box=$("pendList"); box.innerHTML="";
+    if(!res.ok) return;
+    var users=res.body.users;
+    var pending=users.filter(function(u){return u.status==='pending';});
+    var approved=users.filter(function(u){return u.status==='approved';});
+    if(pending.length===0) box.innerHTML='<div class="empty-state">暂无待审批用户。</div>';
+    pending.forEach(function(u){
+      var el=document.createElement("div"); el.className="pend";
+      el.innerHTML='<div><div class="u">'+esc(u.username)+'</div><div class="t">申请于 '+u.createdAt+'</div></div><button data-approve="'+u.id+'">通过</button>';
+      box.appendChild(el);
+    });
+    var st=document.createElement("div"); st.className="section-title"; st.style.marginTop="18px"; st.textContent="已通过用户 · 分配角色（你是主管理员，不可改）";
+    box.appendChild(st);
+    approved.forEach(function(u){
+      var el=document.createElement("div"); el.className="pend";
+      var roleBtns = u.role==='admin'
+        ? '<span class="done-tag" style="background:var(--brand-soft);color:var(--brand)">主管理员</span>'
+        : '<button class="rbtn '+(u.role==='editor'?'on':'')+'" data-role="editor" data-uid="'+u.id+'">编辑</button>'+
+          '<button class="rbtn '+(u.role==='viewer'?'on':'')+'" data-role="viewer" data-uid="'+u.id+'">只读</button>';
+      el.innerHTML='<div><div class="u">'+esc(u.username)+'</div><div class="t">当前：'+(u.role==='admin'?'主管理员':(u.role==='editor'?'编辑':'只读'))+'</div></div>'+roleBtns;
+      box.appendChild(el);
+    });
+    box.querySelectorAll('[data-approve]').forEach(function(b){ b.onclick=function(){
+      api('/api/admin/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:b.getAttribute("data-approve")})})
+        .then(function(){ openApprove(); }); }; });
+    box.querySelectorAll('.rbtn').forEach(function(b){ b.onclick=function(){
+      api('/api/admin/setrole',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:b.getAttribute("data-uid"),role:b.getAttribute("data-role")})})
+        .then(function(){ openApprove(); }); }; });
+    $("approveModal").classList.add("show");
+  });
+}
+function closeModal(){ $("approveModal").classList.remove("show"); }
+$("approveModal").onclick=function(e){ if(e.target===$("approveModal")) closeModal(); };
+
+/* 启动 */
+boot();
+</script>
+</body>
+</html>
